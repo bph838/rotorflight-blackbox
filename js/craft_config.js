@@ -16,11 +16,16 @@ function CraftConfig(prefs) {
     var stateGeneration = 0; // bumped on load/clear so a late loadFromCache() result can't overwrite them
 
     function persist() {
-        prefs.set('craftConfig', {
-            fileName: fileName,
-            loadedAt: loadedAt,
-            parsed: parsed,
-        });
+        // Best effort: a storage failure (e.g. quota exceeded) must not interrupt the load flow
+        try {
+            prefs.set('craftConfig', {
+                fileName: fileName,
+                loadedAt: loadedAt,
+                parsed: parsed,
+            });
+        } catch (e) {
+            console.warn('Could not persist craft config:', e);
+        }
     }
 
     this.loadFile = function(file, onLoaded) {
@@ -78,7 +83,12 @@ function CraftConfig(prefs) {
         loadedAt = null;
         parsed = CraftConfig.emptyParsed();
 
-        prefs.set('craftConfig', null);
+        // In-memory state is already cleared; don't let a storage failure stop callers updating the UI
+        try {
+            prefs.set('craftConfig', null);
+        } catch (e) {
+            console.warn('Could not clear persisted craft config:', e);
+        }
     };
 
     this.hasConfig = function() {
